@@ -82,17 +82,15 @@ const formatEvent = (model: ModelId, event: StreamingEvent): OpenAIStreamingEven
     created: 12345,
     model,
     system_fingerprint: 'fp_44709d6fcb',
-    choices: [
-      {
-        index: 0,
-        delta: {
-          role: 'assistant',
-          content: event.data.completion || '',
-        },
-        logprobs: null,
-        finish_reason: event.type === 'done' ? 'stop' : null,
+    choices: [{
+      index: 0,
+      delta: {
+        role: 'assistant',
+        content: event.data.completion || '',
       },
-    ],
+      logprobs: null,
+      finish_reason: event.type === 'done' ? 'stop' : null,
+    }],
   };
 };
 

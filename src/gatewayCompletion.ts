@@ -28,14 +28,36 @@ const toGatewayMessage = (oaiMessage: OpenAICompletionMessage): GatewayCompletio
   }],
 });
 
-const stopEvent = (modelId: ModelId): OpenAIStreamingEvent => ({
-  id: '1234',
-  object: "chat.completion.chunk",
-  created: 1234,
-  model: modelId,
+const emptyEvent = (model: ModelId): OpenAIStreamingEvent => ({
+  id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
+  object: 'chat.completion.chunk',
+  created: 12345,
+  model,
+  system_fingerprint: 'fp_44709d6fcb',
   choices: [{
     index: 0,
-    delta: { content: '' },
+    delta: {
+      role: 'assistant',
+      content: '',
+    },
+    logprobs: null,
+    finish_reason: null,
+  }],
+});
+
+const stopEvent = (model: ModelId): OpenAIStreamingEvent => ({
+  id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
+  object: 'chat.completion.chunk',
+  created: 12345,
+  model,
+  system_fingerprint: 'fp_44709d6fcb',
+  choices: [{
+    index: 0,
+    delta: {
+      role: 'assistant',
+      content: '',
+    },
+    logprobs: null,
     finish_reason: 'stop',
   }],
 });
@@ -56,18 +78,22 @@ type ContentBlockStopEvent = {
 
 type GatewayStreamEvent = ContentBlockDeltaEvent | ContentBlockStopEvent;
 
-const formatGatewayEvent = (modelId: ModelId, event: GatewayStreamEvent): OpenAIStreamingEvent => {
+const formatGatewayEvent = (model: ModelId, event: GatewayStreamEvent): OpenAIStreamingEvent => {
   // only for 'content_block_delta' events
   if (event.type !== 'content_block_delta') throw new Error(`Bad event type: ${event.type}`);
-  const messageDeltaEvent = event as ContentBlockDeltaEvent;
   return {
-    id: '1234',
-    object: "chat.completion.chunk",
-    created: 1234,
-    model: modelId,
+    id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
+    object: 'chat.completion.chunk',
+    created: 12345,
+    model,
+    system_fingerprint: 'fp_44709d6fcb',
     choices: [{
       index: 0,
-      delta: { content: messageDeltaEvent.delta.text },
+      delta: {
+        role: 'assistant',
+        content: event.delta.text || '',
+      },
+      logprobs: null,
       finish_reason: null,
     }],
   };
@@ -137,9 +163,10 @@ export default async function postCompletionGateway(req: Request, res: Response)
 
     if (gatewayEvent.type === 'content_block_stop') {
       res.write(`data: ${JSON.stringify(stopEvent(modelId))}\n\n`);
-      return;
+      break;
     }
     const oaiEvent = formatGatewayEvent(modelId, gatewayEvent);
     res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
   }
+  res.end();
 };
