@@ -1,27 +1,36 @@
 import { Request, Response } from 'express';
 
 const modelIds = [
-  'openai/gpt-3.5-turbo',
+  'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct',
+  'fireworks/accounts/fireworks/models/mixtral-8x22b-instruct',
   'anthropic/claude-2.0',  // "chatModelMaxTokens": 12000,
+  'anthropic/claude-2.1',
   'anthropic/claude-instant-1.2',  // "completionModelMaxTokens": 9000
   'anthropic/claude-3-haiku-20240307',  // GATEWAY
-  'anthropic/claude-3-sonnet-20240229', // GATEWAY
-  'anthropic/claude-3-opus-20240229',  // GATEWAY
+  'anthropic/claude-3-sonnet-20240229', // GATEWAY, "completionModelMaxTokens": 15000
+  'anthropic/claude-3-opus-20240229',  // GATEWAY, "completionModelMaxTokens": 15000
+  'openai/gpt-3.5-turbo',
+  'openai/gpt-4-1106-preview',
   'openai/gpt-4-turbo-preview',
-  'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct',
+  'openai/gpt-4-turbo',
+  'openai/gpt-4o',
 ] as const;
 
 export type ModelId = typeof modelIds[number];
 
 const models: { [key: string]: ModelId } = {
-  'GPT 3.5 Turbo' : 'openai/gpt-3.5-turbo',
+  'Mixtral 8x7B': 'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct',
+  'Mixtral 8x22B': 'fireworks/accounts/fireworks/models/mixtral-8x22b-instruct',
   'Claude 2.0': 'anthropic/claude-2.0',
   'Claude Instant 1.2': 'anthropic/claude-instant-1.2',
   'Claude 3 Haiku': 'anthropic/claude-3-haiku-20240307',
   'Claude 3 Sonnet': 'anthropic/claude-3-sonnet-20240229',
   'Claude 3 Opus': 'anthropic/claude-3-opus-20240229',
+  'GPT 3.5 Turbo' : 'openai/gpt-3.5-turbo',
+  'GPT 4 Turbo Preview (1106)': 'openai/gpt-4-1106-preview',
   'GPT 4 Turbo Preview': 'openai/gpt-4-turbo-preview',
-  'Mixtral Instruct': 'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct',
+  'GPT 4 Turbo': 'openai/gpt-4-turbo',
+  'GPT-4o': 'openai/gpt-4o',
 };
 
 export const getModelIdByName = (modelName: string): ModelId | null => {
@@ -36,6 +45,9 @@ type ModelQuirks = {
 
 const modelQuirks: { [key in ModelId]?: ModelQuirks } = {
   'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct': {
+    lastMessageAssistant: false,
+  },
+  'fireworks/accounts/fireworks/models/mixtral-8x22b-instruct': {
     lastMessageAssistant: false,
   },
   'anthropic/claude-3-opus-20240229': {
