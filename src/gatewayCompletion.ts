@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Stream } from '@anthropic-ai/sdk/streaming';
+import fetch from 'node-fetch';
 import { getModelIdByName, ModelId } from './models';
 import {
   AUTH_TOKEN,
