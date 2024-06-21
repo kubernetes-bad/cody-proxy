@@ -9,11 +9,14 @@ const modelIds = [
   'anthropic/claude-3-haiku-20240307',  // GATEWAY
   'anthropic/claude-3-sonnet-20240229', // GATEWAY, "completionModelMaxTokens": 15000
   'anthropic/claude-3-opus-20240229',  // GATEWAY, "completionModelMaxTokens": 15000
+  'anthropic/claude-3-5-sonnet-20240620', // GATEWAY, "completionModelMaxTokens": 15000
   'openai/gpt-3.5-turbo',
   'openai/gpt-4-1106-preview',
   'openai/gpt-4-turbo-preview',
   'openai/gpt-4-turbo',
   'openai/gpt-4o',
+  'google/gemini-1.5-pro-latest', // "completionModelMaxTokens": 15000
+  'google/gemini-1.5-flash-latest', // "completionModelMaxTokens": 15000
 ] as const;
 
 export type ModelId = typeof modelIds[number];
@@ -26,11 +29,14 @@ const models: { [key: string]: ModelId } = {
   'Claude 3 Haiku': 'anthropic/claude-3-haiku-20240307',
   'Claude 3 Sonnet': 'anthropic/claude-3-sonnet-20240229',
   'Claude 3 Opus': 'anthropic/claude-3-opus-20240229',
+  'Claude 3.5 Sonnet': 'anthropic/claude-3-5-sonnet-20240620',
   'GPT 3.5 Turbo' : 'openai/gpt-3.5-turbo',
   'GPT 4 Turbo Preview (1106)': 'openai/gpt-4-1106-preview',
   'GPT 4 Turbo Preview': 'openai/gpt-4-turbo-preview',
   'GPT 4 Turbo': 'openai/gpt-4-turbo',
   'GPT-4o': 'openai/gpt-4o',
+  'Gemini 1.5 Pro': 'google/gemini-1.5-pro-latest',
+  'Gemini 1.5 Flash': 'google/gemini-1.5-flash-latest',
 };
 
 export const getModelIdByName = (modelName: string): ModelId | null => {
@@ -57,6 +63,9 @@ const modelQuirks: { [key in ModelId]?: ModelQuirks } = {
     gateway: true,
   },
   'anthropic/claude-3-haiku-20240307': {
+    gateway: true,
+  },
+  'anthropic/claude-3-5-sonnet-20240620': {
     gateway: true,
   }
 };
