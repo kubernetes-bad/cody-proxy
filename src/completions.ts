@@ -36,12 +36,21 @@ type CompletionMessage = {
 
 type FinishReason = 'stop' | 'length' | 'content_filter' | 'tool_calls' | 'function_call';
 
-export type OpenAIStreamingEvent = {
+type OpenAiResponseBase = {
   id: string,
-  object: "chat.completion.chunk",
+  object: 'chat.completion.chunk' | 'chat.completion',
   created: number,
   model: ModelId,
   system_fingerprint?: string
+  usage?: {
+    prompt_tokens: number,
+    total_tokens: number,
+    completion_tokens: number,
+  },
+}
+
+export type OpenAIStreamingEvent = OpenAiResponseBase & {
+  object: "chat.completion.chunk",
   choices: {
     index: number,
     delta: {
@@ -50,13 +59,21 @@ export type OpenAIStreamingEvent = {
     },
     logprobs?: null,
     finish_reason: FinishReason | null,
-    }[],
-  usage?: {
-    prompt_tokens: number,
-    total_tokens: number,
-    completion_tokens: number,
-  },
+  }[],
 };
+
+export type OpenAINonStreamingResponse = OpenAiResponseBase & {
+  object: 'chat.completion',
+  choices: [{
+    index: 0,
+    message: {
+      role?: 'assistant',
+      content: string,
+    },
+    logprobs?: null,
+    finish_reason: FinishReason | null,
+  }]
+}
 
 type StreamingEvent = {
   type: 'done' | 'completion'
@@ -94,6 +111,25 @@ const formatEvent = (model: ModelId, event: StreamingEvent): OpenAIStreamingEven
   };
 };
 
+const formatNonStreamingResponse = (model: ModelId, content: string): OpenAINonStreamingResponse => {
+  return {
+    id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
+    object: 'chat.completion',
+    created: 12345,
+    model,
+    system_fingerprint: 'fp_44709d6fcb',
+    choices: [{
+      index: 0,
+      message: {
+        role: 'assistant',
+        content,
+      },
+      logprobs: null,
+      finish_reason: 'stop',
+    }],
+  };
+};
+
 function parseEvent(eventString: string): StreamingEvent | null {
   try {
     const startIndex = eventString.indexOf('event:');
@@ -121,11 +157,13 @@ const toSourcegraphMessage = (oai: OpenAICompletionMessage): CompletionMessage =
 
 export default async function postCompletion(req: Request, res: Response) {
   const { model, messages } = req.body;
+  const streaming: boolean = req.body['stream'] !== false;
   const modelId = getModelIdByName(model);
   if (!modelId) throw new Error('No model selected');
   const quirks = getModelQuirks(modelId);
 
   console.log(`New Completion request for ${model}`);
+  if (process.env.DEBUG) console.dir({ model, messages });
 
   if (quirks?.gateway === true) return postCompletionGateway(req, res);
 
@@ -151,13 +189,14 @@ export default async function postCompletion(req: Request, res: Response) {
   });
 
   // SSE stuff
-  res.setHeader('Content-Type', 'text/event-stream');
+  if (streaming) res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
   const stream = response.data;
   let previousCompletion = '';
   let buffer = '';
+  let total = '';
   stream.on('data', (data: Buffer) => {
     const eventString = data.toString();
     buffer += eventString;
@@ -172,14 +211,17 @@ export default async function postCompletion(req: Request, res: Response) {
         previousCompletion += delta;
       }
       const oaiEvent = formatEvent(modelId, parsedEvent);
-      res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
+      if (streaming) res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
+      else total += parsedEvent.data.completion || '';
     }
 
     buffer = events[events.length - 1];
   });
 
   stream.on('end', () => {
-    res.end();
+    if (process.env.DEBUG) console.dir(total);
+    if (!streaming) res.send(formatNonStreamingResponse(model, total));
+    else res.end();
   });
 
   stream.on('error', (error: any) => {
