@@ -8,6 +8,16 @@ const port: number = process.env.PORT ? parseInt(process.env.PORT) : 9090;
 
 app.use(express.json());
 
+if (process.env.API_KEY) {
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const apiKey = req.headers['authorization'];
+    if (apiKey && apiKey === `Bearer ${process.env.API_KEY}`) return next();
+    console.log(`Unauthorized request to ${req.method} ${req.url} from ${req.headers['x-forwarded-for'] || req.socket.remoteAddress}`);
+    res.status(403).json({ error: 'Forbidden: Invalid API key' });
+  });
+} else console.log(`Warning: API key NOT set! Allowing everyone in!`);
+
+
 app.get('/v1/models', getModelsHandler);
 app.post('/v1/chat/completions', postCompletion);
 
