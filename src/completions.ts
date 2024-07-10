@@ -26,7 +26,7 @@ const sgClient = axios.create({
 });
 
 export type OpenAICompletionMessage = {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content?: string
 };
 
@@ -152,9 +152,13 @@ const toSourcegraphMessage = (oai: OpenAICompletionMessage): CompletionMessage =
 
 export default async function postCompletion(req: Request, res: Response) {
   const { model, messages } = req.body;
+  const oaiMessages = (messages as OpenAICompletionMessage[]);
+  if (oaiMessages.some(message => message.role === 'system') && !process.env.ALLOW_SYSTEM_MESSAGE) {
+    throw createHttpError(400, 'Cannot send system messages with Cody Proxy');
+  }
   const streaming: boolean = req.body['stream'] !== false;
   const modelId = getModelIdByName(model);
-  if (!modelId) throw new Error('No model selected');
+  if (!modelId) throw createHttpError(400, 'No model selected');
   const quirks = getModelQuirks(modelId);
 
   console.log(`New Completion request for ${model}`);
@@ -165,7 +169,7 @@ export default async function postCompletion(req: Request, res: Response) {
   const completionMessages = [
     { text: CODY_PROMPT, speaker: 'human' },
     { text: CODY_PROMPT_ANSWER, speaker: 'assistant' },
-    ...(messages as OpenAICompletionMessage[]).map(toSourcegraphMessage),
+    ...oaiMessages.map(toSourcegraphMessage),
   ]
   if (quirks?.lastMessageAssistant !== false) completionMessages.push({ speaker: 'assistant' });
 

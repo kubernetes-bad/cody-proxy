@@ -4,11 +4,11 @@ interface ErrorWithStatus extends Error {
   status?: number;
 }
 
-export async function openAiErrorHandler(err: ErrorWithStatus, req: Request, res: Response, next: NextFunction) {
+export async function openAiErrorHandler(err: ErrorWithStatus, req: Request, res: Response) {
   const status = err.status || 500;
   const message = err.message || 'Something went wrong';
 
-  let errorType = 'server_error';
+  let errorType: string;
   switch (status) {
     case 400:
       errorType = 'invalid_request_error';
