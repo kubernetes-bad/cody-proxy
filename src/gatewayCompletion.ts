@@ -10,6 +10,7 @@ import {
   OpenAIStreamingEvent,
 } from './completions';
 import { dotcomTokenToGatewayToken } from './cody';
+import createHttpError from 'http-errors';
 
 const ENDPOINT_GW = 'https://cody-gateway.sourcegraph.com/';
 
@@ -104,7 +105,7 @@ export default async function postCompletionGateway(req: Request, res: Response)
   const { model, messages } = req.body;
   const streaming: boolean = req.body['stream'] !== false;
   const modelId = getModelIdByName(model);
-  if (!modelId) throw new Error('No model selected');
+  if (!modelId) throw createHttpError(400, 'No model selected');
 
   const systemMessage: GatewayCompletionMessage = {
     role: 'system',
@@ -147,11 +148,11 @@ export default async function postCompletionGateway(req: Request, res: Response)
     body: JSON.stringify(request),
   });
 
-  if (!response.body) throw new Error('No response body!');
+  if (!response.body) throw createHttpError('No response body!');
 
   if (response.status !== 200) {
-    console.log(await response.text());
-    throw new Error(`Bad response: ${response.statusText}`);
+    console.error(await response.text());
+    throw createHttpError(response.status, `Bad response: ${response.statusText}`);
   }
 
   if (streaming) res.setHeader('Content-Type', 'text/event-stream');

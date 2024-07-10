@@ -17,6 +17,7 @@
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "http-errors": "^2.0.0",
     "node-fetch": "^2.7.0",
     "undici": "^6.19.2",
     "uuid": "^9.0.1"

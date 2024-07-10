@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import getModelsHandler from './models';
 import postCompletion from './completions';
+import { asyncHandler, openAiErrorHandler } from './errorHandler';
 
 const app: express.Application = express();
 
@@ -17,9 +18,8 @@ if (process.env.API_KEY) {
   });
 } else console.log(`Warning: API key NOT set! Allowing everyone in!`);
 
-
 app.get('/v1/models', getModelsHandler);
-app.post('/v1/chat/completions', postCompletion);
+app.post('/v1/chat/completions', asyncHandler(postCompletion));
 
 app.all('*', (req: Request, res: Response) => {
   console.log('Received request for an unimplemented endpoint:');
@@ -30,6 +30,8 @@ app.all('*', (req: Request, res: Response) => {
 
   res.status(501).json({ message: 'Endpoint not implemented' });
 });
+
+app.use(openAiErrorHandler);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Proxy is running at http://0.0.0.0:${port}/`);

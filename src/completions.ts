@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getModelIdByName, getModelQuirks, ModelId } from './models';
 import axios from 'axios';
+import createHttpError from 'http-errors';
 import postCompletionGateway from './gatewayCompletion';
 
 export const AUTH_TOKEN: string = process.env.AUTH_TOKEN || '';
@@ -131,19 +132,13 @@ export const formatNonStreamingResponse = (model: ModelId, content: string): Ope
 };
 
 function parseEvent(eventString: string): StreamingEvent | null {
-  try {
-    const startIndex = eventString.indexOf('event:');
-    if (startIndex === -1) throw new Error('Event marker not found');
+  const startIndex = eventString.indexOf('event:');
+  if (startIndex === -1) throw new Error('Event marker not found');
 
-    const eventData = eventString.slice(startIndex + 6); // 'event:'.length = 6
-    const type = eventData.substring(0, eventData.indexOf('\n')).trim()  as 'done' | 'completion';
-    const jsonData = eventData.substring(eventData.indexOf('\n') + 7).trim(); // 'data:'.length = 7
-    return { type, data: JSON.parse(jsonData) };
-  } catch (error) {
-    console.error('Error parsing event:', error);
-    console.dir({ eventString });
-    process.exit(3);
-  }
+  const eventData = eventString.slice(startIndex + 6); // 'event:'.length = 6
+  const type = eventData.substring(0, eventData.indexOf('\n')).trim()  as 'done' | 'completion';
+  const jsonData = eventData.substring(eventData.indexOf('\n') + 7).trim(); // 'data:'.length = 7
+  return { type, data: JSON.parse(jsonData) };
 }
 
 const toSourcegraphMessage = (oai: OpenAICompletionMessage): CompletionMessage => {
