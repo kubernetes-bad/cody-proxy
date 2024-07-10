@@ -5,7 +5,7 @@ import { getModelIdByName, ModelId } from './models';
 import {
   AUTH_TOKEN,
   CODY_PROMPT,
-  DEFAULT_GENERATION_SETTINGS, makeRandomTraceparent,
+  DEFAULT_GENERATION_SETTINGS, formatNonStreamingResponse, makeRandomTraceparent,
   OpenAICompletionMessage,
   OpenAIStreamingEvent,
 } from './completions';
@@ -102,6 +102,7 @@ const formatGatewayEvent = (model: ModelId, event: GatewayStreamEvent): OpenAISt
 
 export default async function postCompletionGateway(req: Request, res: Response) {
   const { model, messages } = req.body;
+  const streaming: boolean = req.body['stream'] !== false;
   const modelId = getModelIdByName(model);
   if (!modelId) throw new Error('No model selected');
 
@@ -153,21 +154,26 @@ export default async function postCompletionGateway(req: Request, res: Response)
     throw new Error(`Bad response: ${response.statusText}`);
   }
 
-  res.setHeader('Content-Type', 'text/event-stream');
+  if (streaming) res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
   const claudeStream = Stream.fromSSEResponse<GatewayStreamEvent>(response, abortController);
 
+  let total = '';
   for await (const gatewayEvent of claudeStream) {
     if (!['content_block_delta', 'content_block_stop'].includes(gatewayEvent.type)) continue;
 
     if (gatewayEvent.type === 'content_block_stop') {
-      res.write(`data: ${JSON.stringify(stopEvent(modelId))}\n\n`);
+      if (streaming) res.write(`data: ${JSON.stringify(stopEvent(modelId))}\n\n`);
+      else return res.send(formatNonStreamingResponse(modelId, total));
       break;
     }
-    const oaiEvent = formatGatewayEvent(modelId, gatewayEvent);
-    res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
+    if (streaming) {
+      const oaiEvent = formatGatewayEvent(modelId, gatewayEvent);
+      res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
+    } else total += gatewayEvent.delta.text;
   }
-  res.end();
+  if (streaming) res.end();
+  else return res.send(formatNonStreamingResponse(modelId, total));
 };

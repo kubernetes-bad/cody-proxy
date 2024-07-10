@@ -111,7 +111,7 @@ const formatEvent = (model: ModelId, event: StreamingEvent): OpenAIStreamingEven
   };
 };
 
-const formatNonStreamingResponse = (model: ModelId, content: string): OpenAINonStreamingResponse => {
+export const formatNonStreamingResponse = (model: ModelId, content: string): OpenAINonStreamingResponse => {
   return {
     id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
     object: 'chat.completion',
