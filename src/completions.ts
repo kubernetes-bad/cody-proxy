@@ -87,6 +87,16 @@ export const DEFAULT_GENERATION_SETTINGS = {
   topP: -1,
 };
 
+type CompletionRequest = {
+  temperature: number
+  topK: number
+  topP: number
+  maxTokensToSample: number
+  model: ModelId
+  messages: (CompletionMessage | { text: string, speaker: string })[]
+  stream?: boolean
+}
+
 export const makeRandomTraceparent = () => {
   const part2 = Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
   const part3 = Array.from({ length: 8 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('');
@@ -156,10 +166,12 @@ export default async function postCompletion(req: Request, res: Response) {
   if (oaiMessages.some(message => message.role === 'system') && !process.env.ALLOW_SYSTEM_MESSAGE) {
     throw createHttpError(400, 'Cannot send system messages with Cody Proxy');
   }
-  const streaming: boolean = req.body['stream'] !== false;
   const modelId = getModelIdByName(model);
   if (!modelId) throw createHttpError(400, 'No model selected');
   const quirks = getModelQuirks(modelId);
+  const streamOutputFormat = req.body['stream'] !== false;
+  // model can't stream, or it was explicitly requested not to stream
+  const shouldRequestStreaming = !((quirks?.noStreaming || false) || !streamOutputFormat);
 
   console.log(`New Completion request for ${model}`);
   if (process.env.DEBUG) console.dir({ model, messages });
@@ -173,29 +185,48 @@ export default async function postCompletion(req: Request, res: Response) {
   ]
   if (quirks?.lastMessageAssistant !== false) completionMessages.push({ speaker: 'assistant' });
 
-  const request = {
+  const request: CompletionRequest = {
     ...DEFAULT_GENERATION_SETTINGS,
     maxTokensToSample: 4000,
     model: modelId,
     messages: completionMessages,
   };
+  if (!shouldRequestStreaming) request.stream = false;
 
   const response = await sgClient.post('/completions/stream', request, {
-    responseType: 'stream',
+    responseType: shouldRequestStreaming ? 'stream' : 'json',
     headers: {
       traceparent: makeRandomTraceparent(),
     },
   });
 
+  if (!streamOutputFormat) {
+    const text = response.data.completion;
+    if (!text) res.status(500).send('Error getting data from cody');
+    else res.send(formatNonStreamingResponse(model, text));
+    return;
+  }
+
   // SSE stuff
-  if (streaming) res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
   const stream = response.data;
+  if (quirks?.noStreaming) {
+    const completion: string = stream.completion;
+    if (completion) res.write(`data: ${JSON.stringify(
+      formatEvent(modelId, { type: 'completion', data: { completion }})
+    )}\n\n`);
+    res.write(`data: ${JSON.stringify(
+      formatEvent(modelId, { type: 'done', data: { completion: '', stopReason: 'stop' } })
+    )}\n\n`);
+    res.end();
+    return;
+  }
+
   let previousCompletion = '';
   let buffer = '';
-  let total = '';
   stream.on('data', (data: Buffer) => {
     const eventString = data.toString();
     buffer += eventString;
@@ -210,17 +241,14 @@ export default async function postCompletion(req: Request, res: Response) {
         previousCompletion += delta;
       }
       const oaiEvent = formatEvent(modelId, parsedEvent);
-      if (streaming) res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
-      else total += parsedEvent.data.completion || '';
+      res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
     }
 
     buffer = events[events.length - 1];
   });
 
   stream.on('end', () => {
-    if (process.env.DEBUG) console.dir(total);
-    if (!streaming) res.send(formatNonStreamingResponse(model, total));
-    else res.end();
+    res.end();
   });
 
   stream.on('error', (error: any) => {
