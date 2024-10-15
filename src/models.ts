@@ -6,15 +6,17 @@ const modelIds = [
   'anthropic/claude-2.0',  // "chatModelMaxTokens": 12000,
   'anthropic/claude-2.1',
   'anthropic/claude-instant-1.2',  // "completionModelMaxTokens": 9000
-  'anthropic/claude-3-haiku-20240307',  // GATEWAY
-  'anthropic/claude-3-sonnet-20240229', // GATEWAY, "completionModelMaxTokens": 15000
-  'anthropic/claude-3-opus-20240229',  // GATEWAY, "completionModelMaxTokens": 15000
+  'anthropic/claude-3-haiku-20240307',  // GATEWAY, "completionModelMaxTokens": 7000
+  'anthropic/claude-3-sonnet-20240229', // GATEWAY, "completionModelMaxTokens": 45000
+  'anthropic/claude-3-opus-20240229',  // GATEWAY, "completionModelMaxTokens": 45000
   'anthropic/claude-3-5-sonnet-20240620', // GATEWAY, "completionModelMaxTokens": 15000
   'openai/gpt-3.5-turbo',
   'openai/gpt-4-1106-preview',
   'openai/gpt-4-turbo-preview',
   'openai/gpt-4-turbo',
   'openai/gpt-4o',
+  'openai/cody-chat-preview-001', // "completionModelMaxTokens: 45000
+  'openai/cody-chat-preview-002', // "completionModelMaxTokens: 45000
   'google/gemini-1.5-pro-latest', // "completionModelMaxTokens": 15000
   'google/gemini-1.5-flash-latest', // "completionModelMaxTokens": 15000
 ] as const;
@@ -35,6 +37,8 @@ const models: { [key: string]: ModelId } = {
   'GPT 4 Turbo Preview': 'openai/gpt-4-turbo-preview',
   'GPT 4 Turbo': 'openai/gpt-4-turbo',
   'GPT-4o': 'openai/gpt-4o',
+  'OpenAI o1-preview': 'openai/cody-chat-preview-001',
+  'OpenAI o1-mini': 'openai/cody-chat-preview-002',
   'Gemini 1.5 Pro': 'google/gemini-1.5-pro-latest',
   'Gemini 1.5 Flash': 'google/gemini-1.5-flash-latest',
 };
@@ -47,6 +51,7 @@ export const getModelIdByName = (modelName: string): ModelId | null => {
 type ModelQuirks = {
   lastMessageAssistant?: boolean
   gateway?: boolean
+  noStreaming?: boolean
 };
 
 const modelQuirks: { [key in ModelId]?: ModelQuirks } = {
@@ -67,7 +72,13 @@ const modelQuirks: { [key in ModelId]?: ModelQuirks } = {
   },
   'anthropic/claude-3-5-sonnet-20240620': {
     gateway: true,
-  }
+  },
+  'openai/cody-chat-preview-001': {
+    noStreaming: true,
+  },
+  'openai/cody-chat-preview-002': {
+    noStreaming: true,
+  },
 };
 
 export const getModelQuirks = (modelId: ModelId) => modelQuirks[modelId];
