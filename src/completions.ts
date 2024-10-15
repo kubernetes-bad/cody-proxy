@@ -175,7 +175,7 @@ export default async function postCompletion(req: Request, res: Response) {
 
   const request = {
     ...DEFAULT_GENERATION_SETTINGS,
-    maxTokensToSample: 1000,
+    maxTokensToSample: 4000,
     model: modelId,
     messages: completionMessages,
   };
