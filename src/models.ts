@@ -21,6 +21,7 @@ const modelIds = [
   'openai/cody-chat-preview-002', // "completionModelMaxTokens: 45000
   'google/gemini-1.5-pro-latest', // "completionModelMaxTokens": 15000
   'google/gemini-1.5-flash-latest', // "completionModelMaxTokens": 15000
+  'google/gemini-2.0-flash-exp', // "completionModelMaxTokens": 15000
 ] as const;
 
 export type ModelId = typeof modelIds[number];
@@ -43,6 +44,7 @@ const models: { [key: string]: ModelId } = {
   'GPT-4o': 'openai/gpt-4o',
   'OpenAI o1-preview': 'openai/cody-chat-preview-001',
   'OpenAI o1-mini': 'openai/cody-chat-preview-002',
+  'Gemini 2.0 Flash Experimental': 'google/gemini-2.0-flash-exp',
   'Gemini 1.5 Pro': 'google/gemini-1.5-pro-latest',
   'Gemini 1.5 Flash': 'google/gemini-1.5-flash-latest',
 };
