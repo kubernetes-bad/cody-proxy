@@ -5,7 +5,7 @@ import { getModelIdByName, ModelId } from './models';
 import {
   AUTH_TOKEN,
   CODY_PROMPT,
-  DEFAULT_GENERATION_SETTINGS, formatNonStreamingResponse, makeRandomTraceparent,
+  formatNonStreamingResponse, makeRandomTraceparent,
   OpenAICompletionMessage,
   OpenAIStreamingEvent,
 } from './completions';
@@ -13,6 +13,13 @@ import { dotcomTokenToGatewayToken } from './cody';
 import createHttpError from 'http-errors';
 
 const ENDPOINT_GW = 'https://cody-gateway.sourcegraph.com/';
+
+const DEFAULT_GENERATION_SETTINGS = {
+  temperature: 0.2,
+  max_tokens: 4000,
+  top_k: -1,
+  top_p: -1,
+};
 
 type GatewayCompletionMessage = {
   role: 'system' | 'user' | 'assistant'
@@ -102,7 +109,7 @@ const formatGatewayEvent = (model: ModelId, event: GatewayStreamEvent): OpenAISt
 };
 
 export default async function postCompletionGateway(req: Request, res: Response) {
-  const { model, messages } = req.body;
+  const { model, messages, temperature, top_p, top_k, max_tokens } = req.body;
   const streaming: boolean = req.body['stream'] !== false;
   const modelId = getModelIdByName(model);
   if (!modelId) throw createHttpError(400, 'No model selected');
@@ -116,10 +123,16 @@ export default async function postCompletionGateway(req: Request, res: Response)
     ...messages.map(toGatewayMessage),
   ];
 
+  const generationSettings = {...DEFAULT_GENERATION_SETTINGS};
+  if (max_tokens) generationSettings.max_tokens = max_tokens;
+  if (temperature) generationSettings.temperature = temperature;
+  if (top_p) generationSettings.top_p = top_p;
+  if (top_k) generationSettings.top_k = top_k;
+
   const request = {
+    ...generationSettings,
     model: modelId,
     messages: completionMessages,
-    max_tokens: 1000,
     ...DEFAULT_GENERATION_SETTINGS,
     stream: true,
   };

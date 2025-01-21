@@ -83,6 +83,7 @@ type StreamingEvent = {
 
 export const DEFAULT_GENERATION_SETTINGS = {
   temperature: 0.2,
+  maxTokensToSample: 4000,
   topK: -1,
   topP: -1,
 };
@@ -161,7 +162,7 @@ const toSourcegraphMessage = (oai: OpenAICompletionMessage): CompletionMessage =
 };
 
 export default async function postCompletion(req: Request, res: Response) {
-  const { model, messages } = req.body;
+  const { model, messages, temperature, top_p, top_k, max_tokens } = req.body;
   const oaiMessages = (messages as OpenAICompletionMessage[]);
   if (oaiMessages.some(message => message.role === 'system') && !process.env.ALLOW_SYSTEM_MESSAGE) {
     throw createHttpError(400, 'Cannot send system messages with Cody Proxy');
@@ -185,9 +186,14 @@ export default async function postCompletion(req: Request, res: Response) {
   ]
   if (quirks?.lastMessageAssistant !== false) completionMessages.push({ speaker: 'assistant' });
 
+  const generationSettings = {...DEFAULT_GENERATION_SETTINGS};
+  if (max_tokens) generationSettings.maxTokensToSample = max_tokens;
+  if (temperature) generationSettings.temperature = temperature;
+  if (top_p) generationSettings.topP = top_p;
+  if (top_k) generationSettings.topK = top_k;
+
   const request: CompletionRequest = {
-    ...DEFAULT_GENERATION_SETTINGS,
-    maxTokensToSample: 4000,
+    ...generationSettings,
     model: modelId,
     messages: completionMessages,
   };
