@@ -17,11 +17,16 @@ const modelIds = [
   'openai/gpt-4-turbo-preview',
   'openai/gpt-4-turbo',
   'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'openai/o3-mini',
   'openai/cody-chat-preview-001', // "completionModelMaxTokens: 45000
   'openai/cody-chat-preview-002', // "completionModelMaxTokens: 45000
   'google/gemini-1.5-pro-latest', // "completionModelMaxTokens": 15000
   'google/gemini-1.5-flash-latest', // "completionModelMaxTokens": 15000
   'google/gemini-2.0-flash-exp', // "completionModelMaxTokens": 15000
+  'google/gemini-2.0-pro-exp-02-05', // "completionModelMaxTokens": 15000
+  'google/gemini-2.0-flash', // "completionModelMaxTokens": 15000
+  'google/gemini-2.0-flash-lite-preview-02-05', // "completionModelMaxTokens": 15000
 ] as const;
 
 export type ModelId = typeof modelIds[number];
@@ -42,8 +47,13 @@ const models: { [key: string]: ModelId } = {
   'GPT 4 Turbo Preview': 'openai/gpt-4-turbo-preview',
   'GPT 4 Turbo': 'openai/gpt-4-turbo',
   'GPT-4o': 'openai/gpt-4o',
-  'OpenAI o1-preview': 'openai/cody-chat-preview-001',
+  'GPT-4o-mini': 'openai/gpt-4o-mini',
+  'OpenAI o3-mini': 'openai/o3-mini',
+  'OpenAI o1': 'openai/cody-chat-preview-001',
   'OpenAI o1-mini': 'openai/cody-chat-preview-002',
+  'Gemini 2.0 Pro': 'google/gemini-2.0-pro-exp-02-05',
+  'Gemini 2.0 Flash-Lite Preview': 'google/gemini-2.0-flash-lite-preview-02-05',
+  'Gemini 2.0 Flash': 'google/gemini-2.0-flash',
   'Gemini 2.0 Flash Experimental': 'google/gemini-2.0-flash-exp',
   'Gemini 1.5 Pro': 'google/gemini-1.5-pro-latest',
   'Gemini 1.5 Flash': 'google/gemini-1.5-flash-latest',
