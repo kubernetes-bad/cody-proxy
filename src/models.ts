@@ -1,32 +1,33 @@
 import { Request, Response } from 'express';
 
 const modelIds = [
-  'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct',
-  'fireworks/accounts/fireworks/models/mixtral-8x22b-instruct',
-  'anthropic/claude-2.0',  // "chatModelMaxTokens": 12000,
-  'anthropic/claude-2.1',
+  'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct',  // "chatModelMaxTokens": 7000
+  'fireworks/accounts/fireworks/models/mixtral-8x22b-instruct',  // "chatModelMaxTokens": 7000
+  'fireworks/accounts/fireworks/models/deepseek-v3', // "completionModelMaxTokens: 45000
+  'anthropic/claude-2.0',  // "chatModelMaxTokens": 7000
+  'anthropic/claude-2.1',  // "chatModelMaxTokens": 7000
   'anthropic/claude-instant-1.2',  // "completionModelMaxTokens": 9000
   'anthropic/claude-3-haiku-20240307', // GATEWAY, "completionModelMaxTokens": 7000
-  'anthropic/claude-3-5-haiku-latest', // GATEWAY, "completionModelMaxTokens": 7000
-  'anthropic/claude-3-sonnet-20240229', // GATEWAY, "completionModelMaxTokens": 15000
+  'anthropic/claude-3-5-haiku-latest', // GATEWAY, "completionModelMaxTokens": 45000
+  'anthropic/claude-3-sonnet-20240229', // GATEWAY, "completionModelMaxTokens": 45000
   'anthropic/claude-3-opus-20240229',  // GATEWAY, "completionModelMaxTokens": 45000
   'anthropic/claude-3-5-sonnet-20240620', // GATEWAY, "completionModelMaxTokens": 45000
   'anthropic/claude-3-5-sonnet-latest', // GATEWAY, "completionModelMaxTokens": 45000
-  'openai/gpt-3.5-turbo',
+  'openai/gpt-3.5-turbo',  // 7000
   'openai/gpt-4-1106-preview',
   'openai/gpt-4-turbo-preview',
-  'openai/gpt-4-turbo',
-  'openai/gpt-4o',
-  'openai/gpt-4o-mini',
-  'openai/o3-mini',
+  'openai/gpt-4-turbo',  // 7000
+  'openai/gpt-4o',  // 45000
+  'openai/gpt-4o-mini',  // 45000
+  'openai/o3-mini',  // 45000
   'openai/cody-chat-preview-001', // "completionModelMaxTokens: 45000
   'openai/cody-chat-preview-002', // "completionModelMaxTokens: 45000
-  'google/gemini-1.5-pro-latest', // "completionModelMaxTokens": 15000
-  'google/gemini-1.5-flash-latest', // "completionModelMaxTokens": 15000
-  'google/gemini-2.0-flash-exp', // "completionModelMaxTokens": 15000
-  'google/gemini-2.0-pro-exp-02-05', // "completionModelMaxTokens": 15000
-  'google/gemini-2.0-flash', // "completionModelMaxTokens": 15000
-  'google/gemini-2.0-flash-lite-preview-02-05', // "completionModelMaxTokens": 15000
+  'google/gemini-1.5-pro-latest', // "completionModelMaxTokens": 45000
+  'google/gemini-1.5-flash-latest', // "completionModelMaxTokens": 45000
+  'google/gemini-2.0-flash-exp', // "completionModelMaxTokens": 45000
+  'google/gemini-2.0-pro-exp-02-05', // "completionModelMaxTokens": 45000
+  'google/gemini-2.0-flash', // "completionModelMaxTokens": 45000
+  'google/gemini-2.0-flash-lite-preview-02-05', // "completionModelMaxTokens": 45000
 ] as const;
 
 export type ModelId = typeof modelIds[number];
@@ -34,6 +35,7 @@ export type ModelId = typeof modelIds[number];
 const models: { [key: string]: ModelId } = {
   'Mixtral 8x7B': 'fireworks/accounts/fireworks/models/mixtral-8x7b-instruct',
   'Mixtral 8x22B': 'fireworks/accounts/fireworks/models/mixtral-8x22b-instruct',
+  'DeepSeek V3': 'fireworks/accounts/fireworks/models/deepseek-v3',
   'Claude 2.0': 'anthropic/claude-2.0',
   'Claude Instant 1.2': 'anthropic/claude-instant-1.2',
   'Claude 3 Haiku v2': 'anthropic/claude-3-5-haiku-latest',
@@ -75,6 +77,9 @@ const modelQuirks: { [key in ModelId]?: ModelQuirks } = {
     lastMessageAssistant: false,
   },
   'fireworks/accounts/fireworks/models/mixtral-8x22b-instruct': {
+    lastMessageAssistant: false,
+  },
+  'fireworks/accounts/fireworks/models/deepseek-v3': {
     lastMessageAssistant: false,
   },
   'anthropic/claude-3-opus-20240229': {
