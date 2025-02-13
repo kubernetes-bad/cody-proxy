@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Stream } from '@anthropic-ai/sdk/streaming';
 import fetch from 'node-fetch';
-import { getModelIdByName, ModelId } from './models';
+import { getModelIdByName } from './models';
 import {
   AUTH_TOKEN,
   CODY_PROMPT,
@@ -37,7 +37,7 @@ const toGatewayMessage = (oaiMessage: OpenAICompletionMessage): GatewayCompletio
   }],
 });
 
-const emptyEvent = (model: ModelId): OpenAIStreamingEvent => ({
+const emptyEvent = (model: string): OpenAIStreamingEvent => ({
   id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
   object: 'chat.completion.chunk',
   created: 12345,
@@ -54,7 +54,7 @@ const emptyEvent = (model: ModelId): OpenAIStreamingEvent => ({
   }],
 });
 
-const stopEvent = (model: ModelId): OpenAIStreamingEvent => ({
+const stopEvent = (model: string): OpenAIStreamingEvent => ({
   id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
   object: 'chat.completion.chunk',
   created: 12345,
@@ -87,7 +87,7 @@ type ContentBlockStopEvent = {
 
 type GatewayStreamEvent = ContentBlockDeltaEvent | ContentBlockStopEvent;
 
-const formatGatewayEvent = (model: ModelId, event: GatewayStreamEvent): OpenAIStreamingEvent => {
+const formatGatewayEvent = (model: string, event: GatewayStreamEvent): OpenAIStreamingEvent => {
   // only for 'content_block_delta' events
   if (event.type !== 'content_block_delta') throw new Error(`Bad event type: ${event.type}`);
   return {
@@ -111,7 +111,7 @@ const formatGatewayEvent = (model: ModelId, event: GatewayStreamEvent): OpenAISt
 export default async function postCompletionGateway(req: Request, res: Response) {
   const { model, messages, temperature, top_p, top_k, max_tokens } = req.body;
   const streaming: boolean = req.body['stream'] !== false;
-  const modelId = getModelIdByName(model);
+  const modelId = await getModelIdByName(model);
   if (!modelId) throw createHttpError(400, 'No model selected');
 
   const systemMessage: GatewayCompletionMessage = {

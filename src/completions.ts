@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getModelIdByName, getModelQuirks, ModelId } from './models';
+import { getModelIdByName, getModelQuirks } from './models';
 import axios from 'axios';
 import createHttpError from 'http-errors';
 import postCompletionGateway from './gatewayCompletion';
@@ -41,7 +41,7 @@ type OpenAiResponseBase = {
   id: string,
   object: 'chat.completion.chunk' | 'chat.completion',
   created: number,
-  model: ModelId,
+  model: string,
   system_fingerprint?: string
   usage?: {
     prompt_tokens: number,
@@ -93,7 +93,7 @@ type CompletionRequest = {
   topK: number
   topP: number
   maxTokensToSample: number
-  model: ModelId
+  model: string
   messages: (CompletionMessage | { text: string, speaker: string })[]
   stream?: boolean
 }
@@ -104,7 +104,7 @@ export const makeRandomTraceparent = () => {
   return `00-${part2}-${part3}-01`;
 };
 
-const formatEvent = (model: ModelId, event: StreamingEvent): OpenAIStreamingEvent => {
+const formatEvent = (model: string, event: StreamingEvent): OpenAIStreamingEvent => {
   return {
     id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
     object: 'chat.completion.chunk',
@@ -123,7 +123,7 @@ const formatEvent = (model: ModelId, event: StreamingEvent): OpenAIStreamingEven
   };
 };
 
-export const formatNonStreamingResponse = (model: ModelId, content: string): OpenAINonStreamingResponse => {
+export const formatNonStreamingResponse = (model: string, content: string): OpenAINonStreamingResponse => {
   return {
     id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
     object: 'chat.completion',
@@ -167,7 +167,7 @@ export default async function postCompletion(req: Request, res: Response) {
   if (oaiMessages.some(message => message.role === 'system') && !process.env.ALLOW_SYSTEM_MESSAGE) {
     throw createHttpError(400, 'Cannot send system messages with Cody Proxy');
   }
-  const modelId = getModelIdByName(model);
+  const modelId = await getModelIdByName(model);
   if (!modelId) throw createHttpError(400, 'No model selected');
   const quirks = getModelQuirks(modelId);
   const streamOutputFormat = req.body['stream'] !== false;
