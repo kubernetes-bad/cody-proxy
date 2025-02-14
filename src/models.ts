@@ -13,8 +13,7 @@ type ModelQuirks = {
 };
 
 const modelQuirks: { [key: string]: ModelQuirks } = {
-  'openai/cody-chat-preview-001': { noStreaming: true },
-  'openai/cody-chat-preview-002': { noStreaming: true },
+  'openai/o1-2024-12-17': { noStreaming: true },
 };
 
 const generatePermission = (modelId: string) => ({
