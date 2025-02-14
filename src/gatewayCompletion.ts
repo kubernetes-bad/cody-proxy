@@ -114,14 +114,24 @@ export default async function postCompletionGateway(req: Request, res: Response)
   const modelId = await getModelIdByName(model);
   if (!modelId) throw createHttpError(400, 'No model selected');
 
-  const systemMessage: GatewayCompletionMessage = {
+  const oaiMessages = messages as OpenAICompletionMessage[];
+  const shouldAddCodyPreamble = !process.env.ALLOW_SYSTEM_MESSAGE || oaiMessages
+      .every((message) => message.role !== 'system');
+
+  const systemMessage: GatewayCompletionMessage[] = shouldAddCodyPreamble ? [{
     role: 'system',
     content: [{ type: 'text', text: CODY_PROMPT }],
-  };
-  const completionMessages = [
-    systemMessage,
+  }] : [];
+  const completionMessages: GatewayCompletionMessage[] = [
+    ...systemMessage,
     ...messages.map(toGatewayMessage),
   ];
+
+  // trim the last assistant message - fixes error on continue
+  const lastMessage = completionMessages[completionMessages.length - 1];
+  if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content[0]) {
+    lastMessage.content[0].text = lastMessage.content[0].text.trimEnd();
+  }
 
   const generationSettings = {...DEFAULT_GENERATION_SETTINGS};
   if (max_tokens) generationSettings.max_tokens = max_tokens;
