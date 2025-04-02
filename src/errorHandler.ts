@@ -1,11 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 
 interface ErrorWithStatus extends Error {
   status?: number;
 }
 
-export async function openAiErrorHandler(err: ErrorWithStatus, req: Request, res: Response) {
-  const status = err.status || 500;
+function isErrorWithStatus(error: any): error is ErrorWithStatus {
+  return error && typeof error === 'object' && 'status' in error;
+}
+
+export const openAiErrorHandler: ErrorRequestHandler = async (err: Error, req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const errorWithStatus = isErrorWithStatus(err) ? err : null;
+  const status = errorWithStatus?.status || 500;
   const message = err.message || 'Something went wrong';
 
   let errorType: string;
@@ -42,7 +47,7 @@ export async function openAiErrorHandler(err: ErrorWithStatus, req: Request, res
     stack: err.stack
   });
 
-  return res.status(status).json({
+  res.status(status).json({
     error: {
       message: message,
       type: errorType,

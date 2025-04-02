@@ -21,7 +21,7 @@ if (process.env.API_KEY) {
 app.get('/v1/models', getModelsHandler);
 app.post('/v1/chat/completions', asyncHandler(postCompletion));
 
-app.all('*', (req: Request, res: Response) => {
+app.all('/{*splat}', (req: Request, res: Response) => {
   console.log('Received request for an unimplemented endpoint:');
   console.log('Method:', req.method);
   console.log('Path:', req.originalUrl);
@@ -33,6 +33,7 @@ app.all('*', (req: Request, res: Response) => {
 
 app.use(openAiErrorHandler);
 
-app.listen(port, '0.0.0.0', () => {
+app.listen(port, '0.0.0.0', (err) => {
+  if (err) throw err;
   console.log(`Proxy is running at http://0.0.0.0:${port}/`);
 });

@@ -1,29 +1,21 @@
 import { Request, Response } from 'express';
 import { getModelIdByName, getModelQuirks } from './models';
-import axios from 'axios';
 import createHttpError from 'http-errors';
 import postCompletionGateway from './gatewayCompletion';
-
-export const AUTH_TOKEN: string = process.env.AUTH_TOKEN || '';
+import { makeSgClient } from './sgClient';
 
 export const CODY_PROMPT = 'You are Cody, an AI coding assistant from Sourcegraph.';
 export const CODY_PROMPT_ANSWER = 'I am Cody, an AI coding assistant from Sourcegraph.';
 
 const ENDPOINT_SG = 'https://sourcegraph.com/.api/';
 
-if (!AUTH_TOKEN) throw new Error('No token found. Please set your env var AUTH_TOKEN to your token value');
-
-const sgClient = axios.create({
-  baseURL: ENDPOINT_SG,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept-Encoding': 'gzip;q=0',
-    Authorization: `token ${AUTH_TOKEN}`,
-    Pragma: 'no-cache',
-    'Cache-Control': 'no-cache',
-    'User-Agent': false,
-  },
-});
+const sgClient = makeSgClient({
+  'Content-Type': 'application/json',
+  'Accept-Encoding': 'gzip;q=0',
+  Pragma: 'no-cache',
+  'Cache-Control': 'no-cache',
+  'User-Agent': false,
+}, ENDPOINT_SG);
 
 export type OpenAICompletionMessage = {
   role: 'user' | 'assistant' | 'system'
@@ -98,12 +90,6 @@ type CompletionRequest = {
   stream?: boolean
 }
 
-export const makeRandomTraceparent = () => {
-  const part2 = Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-  const part3 = Array.from({ length: 8 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('');
-  return `00-${part2}-${part3}-01`;
-};
-
 const formatEvent = (model: string, event: StreamingEvent): OpenAIStreamingEvent => {
   return {
     id: `chatcmpl-${Math.floor(Math.random() * 10000)}`,
@@ -175,7 +161,7 @@ export default async function postCompletion(req: Request, res: Response) {
   const shouldRequestStreaming = !((quirks?.noStreaming || false) || !streamOutputFormat);
 
   console.log(`New Completion request for ${model}`);
-  if (process.env.DEBUG) console.dir({ model, messages });
+  // if (process.env.DEBUG) console.dir({ model, messages });
 
   if (quirks?.gateway === true) return postCompletionGateway(req, res);
 
@@ -201,9 +187,6 @@ export default async function postCompletion(req: Request, res: Response) {
 
   const response = await sgClient.post('/completions/stream', request, {
     responseType: shouldRequestStreaming ? 'stream' : 'json',
-    headers: {
-      traceparent: makeRandomTraceparent(),
-    },
   });
 
   if (!streamOutputFormat) {

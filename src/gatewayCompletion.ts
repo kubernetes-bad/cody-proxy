@@ -1,18 +1,21 @@
 import { Request, Response } from 'express';
 import { Stream } from '@anthropic-ai/sdk/streaming';
-import fetch from 'node-fetch';
 import { getModelIdByName } from './models';
-import {
-  AUTH_TOKEN,
-  CODY_PROMPT,
-  formatNonStreamingResponse, makeRandomTraceparent,
-  OpenAICompletionMessage,
-  OpenAIStreamingEvent,
-} from './completions';
-import { dotcomTokenToGatewayToken } from './cody';
+import { CODY_PROMPT, formatNonStreamingResponse, OpenAICompletionMessage, OpenAIStreamingEvent } from './completions';
 import createHttpError from 'http-errors';
+import { makeSgClient } from './sgClient';
 
 const ENDPOINT_GW = 'https://cody-gateway.sourcegraph.com/';
+
+const sgClient = makeSgClient({
+  'content-type': 'application/json; charset=utf-8',
+  'x-sourcegraph-feature': 'chat_completions',
+  Accept: '*/*',
+  'User-Agent': 'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)',
+  'Accept-Encoding': 'gzip,deflate',
+  Pragma: 'no-cache',
+  'Cache-Control': 'no-cache',
+}, ENDPOINT_GW);
 
 const DEFAULT_GENERATION_SETTINGS = {
   temperature: 0.2,
@@ -152,29 +155,15 @@ export default async function postCompletionGateway(req: Request, res: Response)
     abortController.abort();
   });
 
-  const token = dotcomTokenToGatewayToken(AUTH_TOKEN);
-  if (!token) throw new Error('Auth token not found');
-
-  const response = await fetch(new URL('/v1/completions/anthropic-messages', ENDPOINT_GW).href, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'content-type': 'application/json; charset=utf-8',
-      'x-sourcegraph-feature': 'chat_completions',
-      traceparent: makeRandomTraceparent(),
-      Accept: '*/*',
-      'User-Agent': 'node-fetch/1.0 (+https://github.com/bitinn/node-fetch)',
-      'Accept-Encoding': 'gzip,deflate',
-      Pragma: 'no-cache',
-      'Cache-Control': 'no-cache',
-    },
-    body: JSON.stringify(request),
+  const response = await sgClient.post('/v1/completions/anthropic-messages', request, {
+    responseType: 'stream',
+    signal: abortController.signal,
   });
 
-  if (!response.body) throw createHttpError('No response body!');
+  if (!response.data) throw createHttpError('No response body!');
 
   if (response.status !== 200) {
-    console.error(await response.text());
+    console.error(response.data); // TODO: PROBABLY WON'T WORK
     throw createHttpError(response.status, `Bad response: ${response.statusText}`);
   }
 
@@ -182,7 +171,7 @@ export default async function postCompletionGateway(req: Request, res: Response)
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  const claudeStream = Stream.fromSSEResponse<GatewayStreamEvent>(response, abortController);
+  const claudeStream = Stream.fromSSEResponse<GatewayStreamEvent>({ body: response.data } as any, abortController);
 
   let total = '';
   for await (const gatewayEvent of claudeStream) {
