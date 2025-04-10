@@ -15,11 +15,11 @@ const sgClient = makeSgClient({
 }, ENDPOINT_SGWEB);
 
 let modelsCache: {
-  data: { [key: string]: string };
+  data: { [key: string]: Model };
   timestamp: number;
 } | null = null;
 
-export async function getModels(): Promise<{ [key: string]: string }> {
+export async function getModels(): Promise<{ [key: string]: Model }> {
   if (modelsCache && Date.now() - modelsCache.timestamp < MODELS_CACHE_DURATION) return modelsCache.data;
 
   const apiModels = await sgClient.get<ModelsEndpointResponse>('modelconfig/supported-models.json');
@@ -27,12 +27,11 @@ export async function getModels(): Promise<{ [key: string]: string }> {
   const models = apiModels.data.models;
 
   const result = models.reduce((accum, model) => {
-    const provider = model.modelRef.split(':')[0];
     // filter out all autocomplete models
-    if (model.capabilities.includes('autocomplete')) return accum;
-    accum[model.displayName] = `${provider}/${model.modelName}`;
+    if (model.capabilities.includes('autocomplete') && !model.capabilities.includes('chat')) return accum;
+    accum[model.displayName] = model;
     return accum;
-  }, {} as { [key: string]: string });
+  }, {} as { [key: string]: Model });
 
   modelsCache = { data: result, timestamp: Date.now() };
   return result;

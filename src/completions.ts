@@ -1,20 +1,20 @@
 import { Request, Response } from 'express';
-import { getModelIdByName, getModelQuirks } from './models';
+import { getModelByName, getModelQuirks } from './models';
 import createHttpError from 'http-errors';
-import postCompletionGateway from './gatewayCompletion';
 import { makeSgClient } from './sgClient';
 
-export const CODY_PROMPT = 'You are Cody, an AI coding assistant from Sourcegraph.';
-export const CODY_PROMPT_ANSWER = 'I am Cody, an AI coding assistant from Sourcegraph.';
+export const CODY_PROMPT = "You are Cody, an AI coding assistant from Sourcegraph.If your answer contains fenced code blocks in Markdown, include the relevant full file path in the code block tag using this structure: ```$LANGUAGE:$FILEPATH```\nFor executable terminal commands: enclose each command in individual \"bash\" language code block without comments and new lines inside.";
+export const CODY_VSCODE_VERSION = '1.84.0';
 
 const ENDPOINT_SG = 'https://sourcegraph.com/.api/';
 
 const sgClient = makeSgClient({
   'Content-Type': 'application/json',
-  'Accept-Encoding': 'gzip;q=0',
+  'Accept-Encoding': 'gzip,deflate',
   Pragma: 'no-cache',
   'Cache-Control': 'no-cache',
-  'User-Agent': false,
+  'User-Agent': `vscode/${CODY_VSCODE_VERSION} (Node.js v20.18.3)`,
+  'x-requested-with': `vscode ${CODY_VSCODE_VERSION}`,
 }, ENDPOINT_SG);
 
 export type OpenAICompletionMessage = {
@@ -70,7 +70,7 @@ export type OpenAINonStreamingResponse = OpenAiResponseBase & {
 
 type StreamingEvent = {
   type: 'done' | 'completion'
-  data: { completion?: string, stopReason?: FinishReason | '' }
+  data: { deltaText?: string, completion?: string, stopReason?: FinishReason | '' }
 };
 
 export const DEFAULT_GENERATION_SETTINGS = {
@@ -153,24 +153,20 @@ export default async function postCompletion(req: Request, res: Response) {
   if (oaiMessages.some(message => message.role === 'system') && !process.env.ALLOW_SYSTEM_MESSAGE) {
     throw createHttpError(400, 'Cannot send system messages with Cody Proxy');
   }
-  const modelId = await getModelIdByName(model);
-  if (!modelId) throw createHttpError(400, 'No model selected');
-  const quirks = getModelQuirks(modelId);
+  const sgModel = await getModelByName(model);
+  if (!sgModel) throw createHttpError(400, 'No model selected');
+  const quirks = getModelQuirks(sgModel.modelName);
   const streamOutputFormat = req.body['stream'] !== false;
   // model can't stream, or it was explicitly requested not to stream
   const shouldRequestStreaming = !((quirks?.noStreaming || false) || !streamOutputFormat);
 
   console.log(`New Completion request for ${model}`);
-  // if (process.env.DEBUG) console.dir({ model, messages });
-
-  if (quirks?.gateway === true) return postCompletionGateway(req, res);
 
   const completionMessages = [
-    { text: CODY_PROMPT, speaker: 'human' },
-    { text: CODY_PROMPT_ANSWER, speaker: 'assistant' },
+    { text: CODY_PROMPT, speaker: 'system' },
     ...oaiMessages.map(toSourcegraphMessage),
   ]
-  if (quirks?.lastMessageAssistant !== false) completionMessages.push({ speaker: 'assistant' });
+  if (quirks?.lastMessageAssistant) completionMessages.push({ speaker: 'assistant' });
 
   const generationSettings = {...DEFAULT_GENERATION_SETTINGS};
   if (max_tokens) generationSettings.maxTokensToSample = max_tokens;
@@ -180,13 +176,18 @@ export default async function postCompletion(req: Request, res: Response) {
 
   const request: CompletionRequest = {
     ...generationSettings,
-    model: modelId,
+    model: sgModel.modelRef,
     messages: completionMessages,
   };
   if (!shouldRequestStreaming) request.stream = false;
 
   const response = await sgClient.post('/completions/stream', request, {
     responseType: shouldRequestStreaming ? 'stream' : 'json',
+    params: {
+      'api-version': 9,
+      'client-name': 'vscode',
+      'client-version': CODY_VSCODE_VERSION,
+    },
   });
 
   if (!streamOutputFormat) {
@@ -205,10 +206,10 @@ export default async function postCompletion(req: Request, res: Response) {
   if (quirks?.noStreaming) {
     const completion: string = stream.completion;
     if (completion) res.write(`data: ${JSON.stringify(
-      formatEvent(modelId, { type: 'completion', data: { completion }})
+      formatEvent(sgModel.modelName, { type: 'completion', data: { completion }})
     )}\n\n`);
     res.write(`data: ${JSON.stringify(
-      formatEvent(modelId, { type: 'done', data: { completion: '', stopReason: 'stop' } })
+      formatEvent(sgModel.modelName, { type: 'done', data: { completion: '', stopReason: 'stop' } })
     )}\n\n`);
     res.end();
     return;
@@ -224,12 +225,13 @@ export default async function postCompletion(req: Request, res: Response) {
       const event = events[i];
       const parsedEvent = parseEvent(event);
       if (!parsedEvent) continue;
-      if (parsedEvent.type === 'completion' && parsedEvent.data.completion) {
-        const delta = parsedEvent.data.completion.substring(previousCompletion.length);
+      if (parsedEvent.type === 'completion' && ('completion' in parsedEvent.data || 'deltaText' in parsedEvent.data )) {
+        const text = (parsedEvent.data.completion || parsedEvent.data.deltaText) as string;
+        const delta = 'deltaText' in parsedEvent.data ? parsedEvent.data.deltaText : text.substring(previousCompletion.length);
         parsedEvent.data.completion = delta;
         previousCompletion += delta;
       }
-      const oaiEvent = formatEvent(modelId, parsedEvent);
+      const oaiEvent = formatEvent(sgModel.modelName, parsedEvent);
       res.write(`data: ${JSON.stringify(oaiEvent)}\n\n`);
     }
 

@@ -1,8 +1,9 @@
-import ApiKeyManager from './apiKeyManager';
-import axios, { AxiosError, AxiosInstance, AxiosResponse, RawAxiosRequestHeaders } from 'axios';
-import { enc, SHA256 } from 'crypto-js';
 import path from 'node:path';
 import * as fs from 'node:fs';
+import { enc, SHA256 } from 'crypto-js';
+import { v4 as uuidv4 } from 'uuid';
+import axios, { AxiosError, AxiosInstance, AxiosResponse, RawAxiosRequestHeaders } from 'axios';
+import ApiKeyManager from './apiKeyManager';
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -55,7 +56,10 @@ export function makeSgClient(defaultHeaders: RawAxiosRequestHeaders, endpoint: s
 
     config.headers = config.headers || {};
     config.headers.Authorization = authHeader;
-    if (!config.url?.endsWith('.json')) config.headers.traceparent = makeRandomTraceparent();
+    if (!config.url?.endsWith('.json')) {
+      config.headers.traceparent = makeRandomTraceparent();
+      config.headers['x-sourcegraph-interaction-id'] = uuidv4();
+    }
 
     config._apiKey = apiKey;
 

@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { getModels } from './cody';
+import { getModels, Model } from './cody';
 
-export const getModelIdByName = async (modelName: string): Promise<string | null> => {
+export const getModelByName = async (modelName: string): Promise<Model | null> => {
   const models = await getModels();
-  return models[modelName] || null;
-};
+  return modelName in models ? models[modelName] : null;
+}
 
 type ModelQuirks = {
   lastMessageAssistant?: boolean
@@ -12,8 +12,8 @@ type ModelQuirks = {
   noStreaming?: boolean
 };
 
-const modelQuirks: { [key: string]: ModelQuirks } = {
-  'openai/o1-2024-12-17': { noStreaming: true },
+const modelQuirks: { [key: string]: ModelQuirks } = { // ref to quirks
+  // 'openai::2024-02-01::o1': { noStreaming: true }, // now supports streaming!
 };
 
 const generatePermission = (modelId: string) => ({
@@ -46,14 +46,14 @@ export default async function getModelsHandler(req: Request, res: Response) {
 
   const response = {
     object: 'list',
-    data: Object.entries(newModels).map(([modelName, modelId]) => ({
+    data: Object.entries(newModels).map(([modelName, model]) => ({
       id: modelName,
       object: 'model',
       created: Date.now(),
       owned_by: 'openai',
-      root: modelId,
+      root: model.modelName,
       parent: null,
-      permission: [generatePermission(modelId)],
+      permission: [generatePermission(model.modelName)],
     }))
   };
 
