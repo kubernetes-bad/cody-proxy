@@ -56,7 +56,7 @@ export default async function getModelsHandler(req: Request, res: Response) {
       root: model.modelName,
       parent: null,
       meta: { // Open Web UI specific format
-        description: "Coding Questions Only",
+        description: 'Coding Questions Only',
         capabilities: {
           vision: false,
           file_upload: false,
@@ -67,7 +67,7 @@ export default async function getModelsHandler(req: Request, res: Response) {
           usage: false,
         },
         suggestion_prompts: null,
-        tags: ["cody"],
+        tags: [{ name: 'cody' }],
       },
       permission: [generatePermission(model.modelName)],
     }))
