@@ -53,6 +53,20 @@ export default async function getModelsHandler(req: Request, res: Response) {
       owned_by: 'openai',
       root: model.modelName,
       parent: null,
+      meta: { // Open Web UI specific format
+        description: "Coding Questions Only",
+        capabilities: {
+          vision: false,
+          file_upload: false,
+          web_search: false,
+          image_generation: false,
+          code_interpreter: false,
+          citations: false,
+          usage: false,
+        },
+        suggestion_prompts: null,
+        tags: ["cody"],
+      },
       permission: [generatePermission(model.modelName)],
     }))
   };

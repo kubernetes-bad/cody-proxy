@@ -52,7 +52,7 @@ export type Model = {
   modelRef: string
   displayName: string
   modelName: string
-  capabilities: ('edit' | 'chat' | 'vision' | 'tools' | 'autocomplete' | 'reasoning')[],
+  capabilities: ('edit' | 'chat' | 'vision' | 'tools' | 'autocomplete' | 'reasoning' | 'unlimitedChat')[],
   category: string
   status: string
   tier: string
