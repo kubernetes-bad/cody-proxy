@@ -181,6 +181,10 @@ export default async function postCompletion(req: Request, res: Response) {
   };
   if (!shouldRequestStreaming) request.stream = false;
 
+  if (process.env.DEBUG === 'true') {
+    console.log(`  Params: ${JSON.stringify({ ...request, messages: undefined }, null, 2)}`);
+  }
+
   const response = await sgClient.post('/completions/stream', request, {
     responseType: shouldRequestStreaming ? 'stream' : 'json',
     params: {

@@ -40,7 +40,9 @@ export const getModelQuirks = (modelId: string) => {
 }
 
 export default async function getModelsHandler(req: Request, res: Response) {
-  console.log(`GET /v1/models from ${req.headers['x-forwarded-for'] || req.socket.remoteAddress}`);
+  if (process.env.DEBUG === 'true') {
+    console.log(`GET /v1/models from ${req.headers['x-forwarded-for'] || req.socket.remoteAddress}`);
+  }
 
   const newModels = await getModels();
 

@@ -22,7 +22,7 @@ export default class ApiKeyManager {
 
   public async getKey(): Promise<string> {
     const key = await this.getNextKey();
-    console.log(`USING KEY: ${key}`);
+    if (process.env.DEBUG === 'true') console.log(`USING KEY: ${key}`);
     return key;
   }
 
@@ -34,7 +34,7 @@ export default class ApiKeyManager {
 
     if (!currentKeyResumeTime || now >= currentKeyResumeTime) {
       if (currentKeyResumeTime) {
-        console.log(`Key became available!`);
+        if (process.env.DEBUG === 'true') console.log(`Key became available!`);
         this.rateLimitedKeys.delete(currentKey);
       }
       return currentKey; // is not rate limited
@@ -47,7 +47,7 @@ export default class ApiKeyManager {
 
       if (!resumeTime || now >= resumeTime) {
         if (resumeTime) {
-          console.log(`Key became available!`);
+          if (process.env.DEBUG === 'true') console.log(`Key became available!`);
           this.rateLimitedKeys.delete(key);
         }
         this.currentIndex = keyIndex; // make the key great again
